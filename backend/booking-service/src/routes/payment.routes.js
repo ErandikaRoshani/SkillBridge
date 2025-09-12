@@ -15,6 +15,7 @@ router.post("/create-payment-intent", async (req, res) => {
     if (!amount || !currency) {
       return res.status(400).json({ error: "Missing payment details" });
     }
+    
 
     // Create PaymentIntent
     const paymentIntent = await stripe.paymentIntents.create({

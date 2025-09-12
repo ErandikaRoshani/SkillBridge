@@ -115,37 +115,29 @@ async function getCurrentUser(req, res) {
 // Get all mentors with filtering
 async function getAllMentors(req, res) {
   try {
-    const { domain, seniority, badge, availability } = req.query;
-    
-    const filters = {};
-    if (domain) filters.domain = domain;
-    if (seniority) filters.seniority = seniority;
-    if (badge) filters.badge = badge;
-    if (availability) filters.availability = availability;
-    
-    const mentors = await getMentors(filters);
+    const mentors = await getMentors();
     
     // Format the response
     const formattedMentors = mentors.map(mentor => ({
       id: mentor.userId,
-      name: mentor.name,
+      name: mentor.name || 'Unknown',
       email: mentor.email,
       title: mentor.title,
       company: mentor.company,
       bio: mentor.bio,
-      domains: mentor.domains || [],
+      domains: Array.isArray(mentor.domains) ? mentor.domains : [],
       seniority: mentor.seniority,
-      badges: mentor.badges || [],
+      badges: Array.isArray(mentor.badges) ? mentor.badges : [],
       rating: mentor.rating || 0,
       profilePicture: mentor.profilePicture,
-      availabilitySlots: mentor.availabilitySlots || [],
+      availabilitySlots: Array.isArray(mentor.availabilitySlots) ? mentor.availabilitySlots : [],
       hourlyRate: mentor.hourlyRate
     }));
     
     res.json(formattedMentors);
   } catch (error) {
-    console.error('Error fetching mentors:', error);
-    res.status(500).json({ message: 'Error fetching mentors' });
+    console.error('Error fetching all mentors:', error);
+    res.status(500).json({ message: 'Error fetching mentors', error: error.message });
   }
 }
 
@@ -184,4 +176,35 @@ async function getMentorById(req, res) {
   }
 }
 
-module.exports = { createUser, getMentorAvailability, getCurrentUser, getMentorPriceRate,getUserById, getAllMentors, getMentorById };
+// Add to user.controller.js
+async function updateAvailability(req, res) {
+  try {
+    const { sub } = req.user;
+    const { availabilitySlots } = req.body;
+
+    // Get current user
+    const user = await getUser(sub);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update availability slots
+    const updatedUser = {
+      ...user,
+      availabilitySlots: availabilitySlots || []
+    };
+
+    // Save updated user
+    await saveUser(updatedUser);
+
+    res.json({ 
+      message: "Availability updated successfully",
+      availabilitySlots: updatedUser.availabilitySlots
+    });
+  } catch (error) {
+    console.error('Error updating availability:', error);
+    res.status(500).json({ error: 'Failed to update availability' });
+  }
+}
+
+module.exports = { createUser, getMentorAvailability, getCurrentUser, getMentorPriceRate,getUserById, getAllMentors, getMentorById, updateAvailability};

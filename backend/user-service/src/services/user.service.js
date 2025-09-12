@@ -10,7 +10,7 @@ async function saveUser(user) {
   const params = {
     TableName: USERS_TABLE,
     Item: user,
-    ConditionExpression: "attribute_not_exists(userId)" // prevent overwrite
+    //ConditionExpression: "attribute_not_exists(userId)" // prevent overwrite
   };
 
   try {
@@ -34,9 +34,8 @@ async function getUser(userId) {
   return result.Item;
 }
 
-async function getMentors(filters = {}) {
+async function getMentors() {
   try {
-    // Use expression attribute names for reserved keywords
     const scanParams = {
       TableName: USERS_TABLE,
       FilterExpression: "#role = :role",
@@ -48,41 +47,10 @@ async function getMentors(filters = {}) {
       }
     };
 
-    // Apply additional filters if provided
-    let filterExpressions = [];
-    let expressionAttributeValues = { ...scanParams.ExpressionAttributeValues };
-    let expressionAttributeNames = { ...scanParams.ExpressionAttributeNames };
-
-    if (filters.domain) {
-      filterExpressions.push("contains(domains, :domain)");
-      expressionAttributeValues[":domain"] = filters.domain;
-    }
-
-    if (filters.seniority) {
-      filterExpressions.push("seniority = :seniority");
-      expressionAttributeValues[":seniority"] = filters.seniority;
-    }
-
-    if (filters.badge) {
-      filterExpressions.push("contains(badges, :badge)");
-      expressionAttributeValues[":badge"] = filters.badge;
-    }
-
-    if (filters.availability) {
-      filterExpressions.push("contains(availabilitySlots, :availability)");
-      expressionAttributeValues[":availability"] = filters.availability;
-    }
-
-    if (filterExpressions.length > 0) {
-      scanParams.FilterExpression += " AND " + filterExpressions.join(" AND ");
-      scanParams.ExpressionAttributeValues = expressionAttributeValues;
-      scanParams.ExpressionAttributeNames = expressionAttributeNames;
-    }
-
     const result = await docClient.send(new ScanCommand(scanParams));
     return result.Items || [];
   } catch (err) {
-    console.error("Error querying mentors:", err);
+    console.error("Error querying all mentors:", err);
     throw err;
   }
 }

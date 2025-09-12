@@ -317,7 +317,8 @@ export default function MentorBookings({ token : propToken }) {
         <DialogContent>
           <Typography>
             Are you sure you want to {actionDialog.action} the booking session with{" "}
-            {actionDialog.booking?.menteeId} on {actionDialog.booking && formatDate(actionDialog.booking.day)}?
+            {menteeNames[actionDialog.booking?.menteeId] || actionDialog.booking?.menteeId}
+ on {actionDialog.booking && formatDate(actionDialog.booking.day)}?
           </Typography>
         </DialogContent>
         <DialogActions>

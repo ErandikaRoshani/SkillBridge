@@ -10,7 +10,8 @@ app.use("/bookings", bookingRoutes);
 // const webhookRoutes = require('./src/routes/webhook.routes');
 // app.use('/webhook', webhookRoutes);
 const paymentRoutes = require('./src/routes/payment.routes');
-app.use("/api", paymentRoutes);
+const verifyToken = require("../user-service/middleware/auth");
+app.use("/api",verifyToken, paymentRoutes);
 
 
 const PORT = process.env.PORT || 5002;

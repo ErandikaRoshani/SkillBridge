@@ -21,9 +21,11 @@ import {
 } from '@mui/material';
 import { FilterList, Schedule } from '@mui/icons-material';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
-const MentorDiscovery = ({ token }) => {
+const MentorDiscovery = () => {
   const [mentors, setMentors] = useState([]);
+  const [token, setToken] = useState(localStorage.getItem("token") || null);
   const [filteredMentors, setFilteredMentors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,27 +39,17 @@ const MentorDiscovery = ({ token }) => {
   const [page, setPage] = useState(1);
   const mentorsPerPage = 6;
 
-  // Fetch all mentors from backend (with filters)
-  useEffect(() => {
+ useEffect(() => {
     const fetchMentors = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // Use REACT_APP_BACKEND_URL if available, otherwise default to localhost:8090
         const baseURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8090';
         
-        // Build params object (Axios will handle URL encoding)
-        const params = {};
-        if (filters.domain) params.domain = filters.domain;
-        if (filters.seniority) params.seniority = filters.seniority;
-        if (filters.badge) params.badge = filters.badge;
-        if (filters.availability) params.availability = filters.availability;
-        
-        console.log('Fetching mentors with params:', params);
+        console.log('Fetching all mentors');
         
         const response = await axios.get(`${baseURL}/users/mentors/all`, {
-          params, // Axios will handle the query string
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -81,23 +73,71 @@ const MentorDiscovery = ({ token }) => {
       setLoading(false);
       setError('Authentication token is missing');
     }
-  }, [token, filters]); // Refetch when filters change
+  }, [token]);
 
-  // Apply search filter locally
+  // Apply all filters and search locally - FIXED VERSION
   useEffect(() => {
+    let filtered = [...mentors];
+    
+    // Apply domain filter
+    if (filters.domain) {
+      filtered = filtered.filter(mentor => 
+        mentor.domains && mentor.domains.some(domain => 
+          domain.toLowerCase().includes(filters.domain.toLowerCase())
+        )
+      );
+    }
+    
+    // Apply seniority filter
+    if (filters.seniority) {
+      filtered = filtered.filter(mentor => 
+        mentor.seniority && mentor.seniority.toLowerCase() === filters.seniority.toLowerCase()
+      );
+    }
+    
+    // Apply badge filter
+    if (filters.badge) {
+      filtered = filtered.filter(mentor => 
+        mentor.badges && mentor.badges.some(badge => 
+          badge.toLowerCase().includes(filters.badge.toLowerCase())
+        )
+      );
+    }
+    
+    // Apply availability filter - FIXED
+    if (filters.availability) {
+      filtered = filtered.filter(mentor => {
+        if (!mentor.availabilitySlots || !Array.isArray(mentor.availabilitySlots)) {
+          return false;
+        }
+        
+        return mentor.availabilitySlots.some(slot => {
+          // Convert slot to string for searching
+          const slotString = typeof slot === 'object' ? 
+            JSON.stringify(slot).toLowerCase() : 
+            String(slot).toLowerCase();
+          
+          return slotString.includes(filters.availability.toLowerCase());
+        });
+      });
+    }
+    
+    // Apply search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      const filtered = mentors.filter(mentor => 
-        mentor.name?.toLowerCase().includes(term) || 
-        mentor.bio?.toLowerCase().includes(term) ||
-        (mentor.domains && mentor.domains.some(domain => domain.toLowerCase().includes(term)))
+      filtered = filtered.filter(mentor => 
+        (mentor.name && mentor.name.toLowerCase().includes(term)) || 
+        (mentor.bio && mentor.bio.toLowerCase().includes(term)) ||
+        (mentor.domains && mentor.domains.some(domain => domain.toLowerCase().includes(term))) ||
+        (mentor.seniority && mentor.seniority.toLowerCase().includes(term)) ||
+        (mentor.badges && mentor.badges.some(badge => badge.toLowerCase().includes(term)))
       );
-      setFilteredMentors(filtered);
-    } else {
-      setFilteredMentors(mentors);
     }
-    setPage(1); // Reset to first page when search changes
-  }, [searchTerm, mentors]);
+    
+    setFilteredMentors(filtered);
+    setPage(1); // Reset to first page when filters change
+  }, [filters, searchTerm, mentors]);
+
 
   // Handle pagination
   const handlePageChange = (event, value) => {
@@ -160,107 +200,121 @@ const MentorDiscovery = ({ token }) => {
           <FilterList sx={{ mr: 1 }} />
           <Typography variant="h6">Filters</Typography>
         </Box>
-        
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Domain</InputLabel>
-              <Select
-                value={filters.domain}
-                label="Domain"
-                onChange={(e) => setFilters({...filters, domain: e.target.value})}
-              >
-                <MenuItem value="">All Domains</MenuItem>
-                <MenuItem value="backend">Backend</MenuItem>
-                <MenuItem value="frontend">Frontend</MenuItem>
-                <MenuItem value="devops">DevOps</MenuItem>
-                <MenuItem value="data">Data</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Seniority</InputLabel>
-              <Select
-                value={filters.seniority}
-                label="Seniority"
-                onChange={(e) => setFilters({...filters, seniority: e.target.value})}
-              >
-                <MenuItem value="">All Levels</MenuItem>
-                <MenuItem value="senior">Senior Engineer</MenuItem>
-                <MenuItem value="staff">Staff Engineer</MenuItem>
-                <MenuItem value="principal">Principal Engineer</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Badge</InputLabel>
-              <Select
-                value={filters.badge}
-                label="Badge"
-                onChange={(e) => setFilters({...filters, badge: e.target.value})}
-              >
-                <MenuItem value="">All Badges</MenuItem>
-                <MenuItem value="interview">Interview Coach</MenuItem>
-                <MenuItem value="systemDesign">System Design Specialist</MenuItem>
-                <MenuItem value="career">Career Advisor</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Availability</InputLabel>
-              <Select
-                value={filters.availability}
-                label="Availability"
-                onChange={(e) => setFilters({...filters, availability: e.target.value})}
-              >
-                <MenuItem value="">Any Time</MenuItem>
-                <MenuItem value="morning">Morning</MenuItem>
-                <MenuItem value="afternoon">Afternoon</MenuItem>
-                <MenuItem value="evening">Evening</MenuItem>
-                <MenuItem value="weekend">Weekend</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Search by name, bio or domain"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Type to search mentors..."
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={6} display="flex" alignItems="center">
-            <Button 
-              variant="outlined" 
-              onClick={resetFilters}
-              sx={{ mr: 2 }}
-              disabled={!filters.domain && !filters.seniority && !filters.badge && !filters.availability && !searchTerm}
-            >
-              Reset Filters
-            </Button>
-            <Typography variant="body2">
-              {filteredMentors.length} {filteredMentors.length === 1 ? 'mentor' : 'mentors'} found
-            </Typography>
-          </Grid>
-        </Grid>
+
+<Grid container spacing={2} alignItems="center">
+  {/* Domain */}
+  <Grid item>
+    <FormControl fullWidth sx={{ minWidth: 150 }}>
+      <InputLabel>Domain</InputLabel>
+      <Select
+        value={filters.domain}
+        onChange={(e) => setFilters({ ...filters, domain: e.target.value })}
+      >
+        <MenuItem value="">All Domains</MenuItem>
+        <MenuItem value="backend">Backend</MenuItem>
+        <MenuItem value="frontend">Frontend</MenuItem>
+        <MenuItem value="devops">DevOps</MenuItem>
+        <MenuItem value="data">Data</MenuItem>
+      </Select>
+    </FormControl>
+  </Grid>
+
+  {/* Seniority */}
+  <Grid item >
+    <FormControl fullWidth sx={{ minWidth: 150 }}>
+      <InputLabel>Seniority</InputLabel>
+      <Select
+        value={filters.seniority}
+        onChange={(e) => setFilters({ ...filters, seniority: e.target.value })}
+      >
+        <MenuItem value="">All Levels</MenuItem>
+        <MenuItem value="senior">Senior Engineer</MenuItem>
+        <MenuItem value="staff">Staff Engineer</MenuItem>
+        <MenuItem value="principal">Principal Engineer</MenuItem>
+      </Select>
+    </FormControl>
+  </Grid>
+
+  {/* Badge */}
+  <Grid item >
+    <FormControl fullWidth sx={{ minWidth: 150 }}>
+      <InputLabel>Badge</InputLabel>
+      <Select
+        value={filters.badge}
+        onChange={(e) => setFilters({ ...filters, badge: e.target.value })}
+      >
+        <MenuItem value="">All Badges</MenuItem>
+        <MenuItem value="interview">Interview Coach</MenuItem>
+        <MenuItem value="systemDesign">System Design Specialist</MenuItem>
+        <MenuItem value="career">Career Advisor</MenuItem>
+      </Select>
+    </FormControl>
+  </Grid>
+
+  {/* Availability */}
+  <Grid item >
+    <FormControl fullWidth sx={{ minWidth: 150 }}>
+      <InputLabel>Availability</InputLabel>
+      <Select
+        value={filters.availability}
+        onChange={(e) =>
+          setFilters({ ...filters, availability: e.target.value })
+        }
+      >
+        <MenuItem value="">Any Time</MenuItem>
+        <MenuItem value="morning">Morning</MenuItem>
+        <MenuItem value="afternoon">Afternoon</MenuItem>
+        <MenuItem value="evening">Evening</MenuItem>
+        <MenuItem value="weekend">Weekend</MenuItem>
+      </Select>
+    </FormControl>
+  </Grid>
+
+  {/* Search */}
+  <Grid item >
+    <TextField
+      fullWidth
+      label="Search by name, bio or domain"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      placeholder="Type to search mentors..."
+    />
+  </Grid>
+
+  {/* Reset + Count */}
+  <Grid item >
+    <Box display="flex" alignItems="center" gap={1}>
+      <Button 
+        variant="outlined"
+        onClick={resetFilters}
+        disabled={
+          !filters.domain &&
+          !filters.seniority &&
+          !filters.badge &&
+          !filters.availability &&
+          !searchTerm
+        }
+      >
+        Reset Filters
+      </Button>
+      <Typography variant="body2">
+        {filteredMentors.length} found
+      </Typography>
+    </Box>
+  </Grid>
+</Grid>
+
+
       </Card>
       
       {/* Debug info - remove in production */}
       <Box sx={{ mb: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
         <Typography variant="caption">
-          Debug: Active Filters - Domain: {filters.domain || 'None'}, 
+          Active Filters - Domain: {filters.domain || 'None'}, 
           Seniority: {filters.seniority || 'None'}, 
           Badge: {filters.badge || 'None'}, 
-          Availability: {filters.availability || 'None'}
+          Availability: {filters.availability || 'None'},
+          Search: {searchTerm || 'None'}
         </Typography>
       </Box>
       
@@ -298,6 +352,7 @@ const MentorDiscovery = ({ token }) => {
 
 // Mentor Card Component
 const MentorCard = ({ mentor }) => {
+    const navigate = useNavigate();
   // Function to format availability slots
   const formatAvailabilitySlot = (slot) => {
     if (typeof slot === 'string') {
@@ -329,15 +384,11 @@ const MentorCard = ({ mentor }) => {
           <Box>
             <Typography variant="h6">{mentor.name || 'Unknown Mentor'}</Typography>
             <Typography variant="body2" color="textSecondary">
-              {mentor.title || 'Mentor'} • {mentor.company || 'Unknown Company'}
+              {mentor.title || 'Mentor'}
             </Typography>
             <Rating value={mentor.rating || 0} readOnly size="small" />
           </Box>
         </Box>
-        
-        <Typography variant="body2" sx={{ mb: 2, minHeight: '40px' }}>
-          {mentor.bio || 'No bio available'}
-        </Typography>
         
         {/* Domains */}
         {mentor.domains && mentor.domains.length > 0 && (
@@ -436,7 +487,7 @@ const MentorCard = ({ mentor }) => {
         <Button 
           variant="contained" 
           fullWidth
-          onClick={() => window.location.href = `/mentor-bookings?mentorId=${mentor.id || mentor.userId}`}
+          onClick={() => navigate("/mentee-bookings")}
           sx={{ mt: 'auto' }}
         >
           Book Session

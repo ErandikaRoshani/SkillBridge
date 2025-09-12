@@ -41,6 +41,7 @@ export default function AuthWrapper() {
     const hubListenerCancel = Hub.listen("auth", ({ payload }) => {
       if (payload.event === "signedIn") {
         setCurrentUser(payload.data);
+         saveTokenAndUser(payload.data);
         handleSignIn(payload.data);
       } else if (payload.event === "signedOut") {
         setCurrentUser(null);
@@ -53,6 +54,62 @@ export default function AuthWrapper() {
 
     return () => hubListenerCancel();
   }, []);
+
+   const saveTokenAndUser = async (user) => {
+    if (!user || hasProcessedUser) {
+      console.log("Skipping user processing - no user or already processed");
+      return;
+    }
+
+    console.log("Processing authenticated user:", user);
+
+    const formData = JSON.parse(localStorage.getItem("signupFormData") || "{}");
+    if (!formData.role) {
+      console.warn("Form data missing role. Aborting backend call.");
+      return;
+    }
+
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+      console.log("Fetched JWT token:", token);
+      if (!token) return;
+
+      localStorage.setItem("token", token);
+
+      const payload = {
+        role: formData.role,
+        name: formData.name,
+        domains: formData.domains?.split(",").map(d => d.trim()),
+        seniority: formData.seniority,
+        badges: formData.badges?.split(",").map(b => b.trim()),
+        interests: formData.interests?.split(",").map(i => i.trim()),
+        goals: formData.goals,
+        experienceLevel: formData.experienceLevel,
+        hourlyRate: formData.hourlyRate,
+        availabilitySlots: formData.availabilitySlots?.split(",").map(slot => {
+          const [day, time] = slot.trim().split(" ");
+          return { day, time, timezone: "Asia/Colombo" };
+        }),
+      };
+
+      console.log("Sending payload to backend:", payload);
+
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/users`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("Backend response:", response.data);
+      
+      // Mark as processed to prevent duplicate calls
+      setHasProcessedUser(true);
+      
+      // Clear the form data after successful submission
+      localStorage.removeItem("signupFormData");
+    } catch (err) {
+      console.error("Error sending user data:", err);
+    }
+  };
 
   const handleSignIn = async (user) => {
     if (!user || hasProcessedUser) return;

@@ -109,7 +109,7 @@ export default function SignUpFormFields() {
             />
             <textarea 
               name="availabilitySlots" 
-              placeholder="Availability Slots (e.g., Monday 18:00-20:00, Wednesday 19:00-21:00)" 
+              placeholder="Availability Slots (e.g., 2025/09/12 18:00-20:00, 2025/10/13 19:00-21:00)" 
               onChange={handleChange} 
               style={{ display: 'block', width: '100%', padding: '0.5rem', margin: '0.5rem 0', minHeight: '80px' }}
             />

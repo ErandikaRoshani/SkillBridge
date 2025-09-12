@@ -10,6 +10,9 @@ import { Box } from "@mui/material";
 import { useState, useEffect } from "react";
 import { getCurrentUser, fetchAuthSession, signOut as amplifySignOut } from "aws-amplify/auth";
 import MentorDiscovery from "./components/MentorDiscovery";
+import AvailabilityManager from "./components/AvailabilityManager"; // Add this import
+import MenteeCodeReviews from "./components/MenteeCodeReviews";
+import MentorCodeReviews from "./components/MentorCodeReviews";
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -63,9 +66,13 @@ function App() {
             <Route path="/" element={<AuthWrapper />} />
             <Route path="/live/:bookingId" element={<LiveSession />} />
             <Route path="/calendar" element={<Calendar />} />
+            <Route path="/mentee-code-reviews" element={<MenteeCodeReviews />} />
+            <Route path="/mentor-code-reviews" element={<MentorCodeReviews />} />
             <Route path="/mentor-bookings" element={<MentorBookings token={token} />} />
             <Route path="/mentee-bookings" element={<MenteeBookings token={token} />} />
-            <Route path="/mentors" element={<MentorDiscovery  token={token}/>} />
+            <Route path="/mentors" element={<MentorDiscovery token={token} />} />
+            {/* Add the new route for availability management */}
+            <Route path="/availability" element={<AvailabilityManager token={token} mentorId={currentUser?.userId} />} />
           </Routes>
         </Box>
       </Box>

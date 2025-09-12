@@ -1,4 +1,4 @@
-import React, { useEffect,useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -13,7 +13,7 @@ import {
   Divider,
   useTheme,
   useMediaQuery,
-} from '@mui/material';
+} from "@mui/material";
 import {
   AccountCircle,
   ExitToApp,
@@ -22,19 +22,21 @@ import {
   Code,
   Work,
   Person,
-  Menu as MenuIcon
-} from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+  Menu as MenuIcon,
+} from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import useUser from '../services/UserContext';
+import useUser from "../services/UserContext";
 
-const Header = ({  role, onSignOut, token }) => {
+
+const Header = ({ onSignOut, token }) => {
   const [anchorEl, setAnchorEl] = useState(null);
-  const [userName, setUserName] = useState(null);
+  const [userName, setUserName] = useState(localStorage.getItem("userName") || null);
+  const [role, setRole] = useState(localStorage.getItem("signupRole") || null);
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
-  const {user} = useUser();
+  const { user } = useUser();
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -54,82 +56,64 @@ const Header = ({  role, onSignOut, token }) => {
     onSignOut();
   };
 
-     useEffect(() => {
-    const userData =  fetchUserById(user);
-    }, [user]);
-
-      const fetchUserById = async (id) => {
-      try {
-        const response = await axios.get(
-          `${process.env.REACT_APP_BACKEND_URL}/users/getUserById/${id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setUserName(response.data.name)
-        return response.data;
-      } catch (error) {
-        console.error(`Error fetching user ${id}:`, error);
-        return { name: id }; // Fallback to ID if error
-      }
-    };
-
   // Common navigation items for both roles
   const commonMenuItems = [
-    { label: 'Calendar', path: '/calendar', icon: <CalendarToday /> },
-    { label: 'Code Reviews', path: '/code-reviews', icon: <Code /> },
+    { label: "Calendar", path: "/calendar", icon: <CalendarToday /> },
   ];
 
   // Role-specific navigation items
   const mentorMenuItems = [
-    { label: 'Service Packages', path: '/packages', icon: <Work /> },
-    { label: 'Bookings', path: '/mentor-bookings', icon: <Book /> },
+    { label: "Service Packages", path: "/packages", icon: <Work /> },
+    { label: "Availability", path: "/availability", icon: <Work /> },
+    { label: "Bookings", path: "/mentor-bookings", icon: <Book /> },
+    { label: "Code Reviews", path: "/mentor-code-reviews", icon: <Code /> },
   ];
 
   const menteeMenuItems = [
-    { label: 'Find Mentors', path: '/mentors', icon: <Person /> },
-    { label: 'Bookings', path: '/mentee-bookings', icon: <Book /> },
+    { label: "Find Mentors", path: "/mentors", icon: <Person /> },
+    { label: "Bookings", path: "/mentee-bookings", icon: <Book /> },
+    { label: "Code Reviews", path: "/mentee-code-reviews", icon: <Code /> },
   ];
 
   const menuItems = [
     ...commonMenuItems,
-    ...(role === 'mentor' ? mentorMenuItems : menteeMenuItems),
+    ...(role === "mentor" ? mentorMenuItems : menteeMenuItems),
   ];
 
-  const menuId = 'primary-search-account-menu';
+  const menuId = "primary-search-account-menu";
   const isMenuOpen = Boolean(anchorEl);
 
   const renderMenu = (
     <Menu
       anchorEl={anchorEl}
       anchorOrigin={{
-        vertical: 'top',
-        horizontal: 'right',
+        vertical: "top",
+        horizontal: "right",
       }}
       id={menuId}
       keepMounted
       transformOrigin={{
-        vertical: 'top',
-        horizontal: 'right',
+        vertical: "top",
+        horizontal: "right",
       }}
       open={isMenuOpen}
       onClose={handleMenuClose}
     >
       <Box sx={{ px: 2, py: 1 }}>
         <Typography variant="subtitle1" fontWeight="bold">
-          {userName|| user?.attributes?.email}
+          {userName || user?.attributes?.email}
         </Typography>
-        <Chip 
-          label={role} 
-          size="small" 
-          color={role === 'mentor' ? 'primary' : 'secondary'} 
+        <Chip
+          label={role}
+          size="small"
+          color={role === "mentor" ? "primary" : "secondary"}
           sx={{ mt: 0.5 }}
         />
       </Box>
       <Divider />
       {menuItems.map((item) => (
         <MenuItem key={item.path} onClick={() => handleNavigation(item.path)}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {item.icon}
             {item.label}
           </Box>
@@ -137,7 +121,7 @@ const Header = ({  role, onSignOut, token }) => {
       ))}
       <Divider />
       <MenuItem onClick={handleSignOutClick}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <ExitToApp />
           Sign Out
         </Box>
@@ -153,19 +137,19 @@ const Header = ({  role, onSignOut, token }) => {
           <Typography
             variant="h6"
             component="div"
-            sx={{ 
-              flexGrow: 1, 
-              fontWeight: 'bold',
-              cursor: 'pointer'
+            sx={{
+              flexGrow: 1,
+              fontWeight: "bold",
+              cursor: "pointer",
             }}
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
           >
             SkillBridge
           </Typography>
 
           {/* Desktop Navigation */}
           {!isMobile && (
-            <Box sx={{ display: 'flex', gap: 1, mr: 2 }}>
+            <Box sx={{ display: "flex", gap: 1, mr: 2 }}>
               {commonMenuItems.map((item) => (
                 <Button
                   key={item.path}
@@ -176,7 +160,7 @@ const Header = ({  role, onSignOut, token }) => {
                   {item.label}
                 </Button>
               ))}
-              {role === 'mentor' 
+              {role === "mentor"
                 ? mentorMenuItems.map((item) => (
                     <Button
                       key={item.path}
@@ -196,8 +180,7 @@ const Header = ({  role, onSignOut, token }) => {
                     >
                       {item.label}
                     </Button>
-                  ))
-              }
+                  ))}
             </Box>
           )}
 
@@ -216,10 +199,10 @@ const Header = ({  role, onSignOut, token }) => {
           )}
 
           {/* User Profile */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {!isMobile && (
               <Typography variant="body2" sx={{ mr: 1 }}>
-                Hello, {userName || 'User'}
+                Hello, {userName || "User"}
               </Typography>
             )}
             <IconButton
@@ -231,11 +214,12 @@ const Header = ({  role, onSignOut, token }) => {
               onClick={handleProfileMenuOpen}
               color="inherit"
             >
-              <Avatar 
-                sx={{ 
-                  width: 32, 
-                  height: 32, 
-                  bgcolor: role === 'mentor' ? 'primary.main' : 'secondary.main' 
+              <Avatar
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor:
+                    role === "mentor" ? "primary.main" : "secondary.main",
                 }}
               >
                 {user?.username?.[0]?.toUpperCase() || <AccountCircle />}

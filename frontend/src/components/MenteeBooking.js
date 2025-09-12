@@ -44,6 +44,7 @@ function PaymentForm({ bookingData, onBack, onSuccess, onError, loading }) {
   const elements = useElements();
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
+  const [token, setToken] = useState(localStorage.getItem("token") || null);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -57,7 +58,7 @@ function PaymentForm({ bookingData, onBack, onSuccess, onError, loading }) {
     try {
       // Create payment intent with backend
       const paymentIntentResponse = await axios.post(
-        `http://localhost:5002/api/create-payment-intent`,
+        `${process.env.REACT_APP_BACKEND_BOOKING_SERVICE_URL}/api/create-payment-intent`,
         {
           amount: Math.round(bookingData.totalAmount * 100), // Convert to cents
           mentorId: bookingData.mentorId,
@@ -65,7 +66,8 @@ function PaymentForm({ bookingData, onBack, onSuccess, onError, loading }) {
           currency: "usd",
         },
         {
-          headers: { Authorization: `Bearer ${bookingData.token}` },
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 30000,
         }
       );
 
@@ -82,12 +84,16 @@ function PaymentForm({ bookingData, onBack, onSuccess, onError, loading }) {
       });
 
       if (result.error) {
-        onError(result.error.message);
+        const userFriendlyError =
+          result.error.type === "card_error"
+            ? "Card payment failed. Please check your card details."
+            : "Payment failed. Please try again.";
+
+        onError(userFriendlyError);
       } else {
         onSuccess();
       }
     } catch (error) {
-      console.error("Payment error:", error);
       onError(
         "Payment failed. Please try again. Make sure you're using test card: 4242 4242 4242 4242"
       );
@@ -236,7 +242,7 @@ function PaymentFallback({ bookingData, onBack, onSuccess, loading }) {
   );
 }
 
-export default function MenteeBookings({ token : propToken }) {
+export default function MenteeBookings({ token: propToken }) {
   const [bookings, setBookings] = useState([]);
   const [mentorId, setMentorId] = useState("");
   const [slots, setSlots] = useState([]);
@@ -248,11 +254,13 @@ export default function MenteeBookings({ token : propToken }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [mentorNames, setMentorNames] = useState({});
-  const [token, setToken] = useState(propToken || localStorage.getItem("token"));
+  const [token, setToken] = useState(
+    propToken || localStorage.getItem("token")
+  );
 
   const steps = ["Select Mentor", "Choose Slot", "Payment", "Confirmation"];
 
-   useEffect(() => {
+  useEffect(() => {
     if (propToken) {
       setToken(propToken);
       localStorage.setItem("token", propToken);
@@ -267,24 +275,25 @@ export default function MenteeBookings({ token : propToken }) {
     fetchBookings();
   }, [token]);
 
-
   const fetchBookings = async () => {
     setLoadingBookings(true);
     try {
-      const data = await getMyBookings(token,"mentee");
-     setBookings(Array.isArray(data) ? data : []);
+      const data = await getMyBookings(token, "mentee");
+      setBookings(Array.isArray(data) ? data : []);
 
-           const uniqueMentorIds = [...new Set(data.map(booking => booking.mentorId))];
-        const names = {};
-        
-        await Promise.all(
-          uniqueMentorIds.map(async (mentorId) => {
-            const userData = await fetchUserById(mentorId);
-            names[mentorId] = userData.name || mentorId;
-          })
-        );
-        
-        setMentorNames(names);
+      const uniqueMentorIds = [
+        ...new Set(data.map((booking) => booking.mentorId)),
+      ];
+      const names = {};
+
+      await Promise.all(
+        uniqueMentorIds.map(async (mentorId) => {
+          const userData = await fetchUserById(mentorId);
+          names[mentorId] = userData.name || mentorId;
+        })
+      );
+
+      setMentorNames(names);
     } catch (err) {
       console.error("Error fetching bookings:", err);
       setError("Failed to load bookings");
@@ -293,20 +302,20 @@ export default function MenteeBookings({ token : propToken }) {
     }
   };
 
-    const fetchUserById = async (id) => {
-      try {
-        const response = await axios.get(
-          `${process.env.REACT_APP_BACKEND_URL}/users/getUserById/${id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        return response.data;
-      } catch (error) {
-        console.error(`Error fetching user ${id}:`, error);
-        return { name: id }; // Fallback to ID if error
-      }
-    };
+  const fetchUserById = async (id) => {
+    try {
+      const response = await axios.get(
+        `${process.env.REACT_APP_BACKEND_URL}/users/getUserById/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching user ${id}:`, error);
+      return { name: id };
+    }
+  };
 
   useEffect(() => {
     const fetchMentorDetails = async () => {
@@ -620,7 +629,7 @@ export default function MenteeBookings({ token : propToken }) {
               Booking Confirmed!
             </Typography>
             <Typography variant="body1" color="text.secondary" gutterBottom>
-              Your session with {mentorId} has been booked successfully.
+              Your session with {mentorNames[mentorId] || mentorId} has been booked successfully.
             </Typography>
             {selectedSlot && (
               <Typography variant="body2" color="text.secondary">
@@ -653,7 +662,7 @@ export default function MenteeBookings({ token : propToken }) {
                 <Card>
                   <CardContent>
                     <Typography variant="subtitle1">
-                      {mentorNames[booking.mentorId] || booking.mentorId} 
+                      {mentorNames[booking.mentorId] || booking.mentorId}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {booking.day} at {booking.slot}

@@ -26,6 +26,7 @@ export default function UserCalendar() {
   const localVideoRef = useRef();
   const remoteVideoRef = useRef();
   const wsRef = useRef(null);
+   const [mentorNames, setMentorNames] = useState({});
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -40,6 +41,16 @@ export default function UserCalendar() {
         const acceptedBookings = data.filter((b) => b.status === "accepted");
         setBookings(acceptedBookings);
         console.log("ab",acceptedBookings)
+         const uniqueMentorIds = [...new Set(data.map(booking => booking.mentorId))];
+        const names = {};
+         await Promise.all(
+          uniqueMentorIds.map(async (mentorId) => {
+            const userData = await fetchUserById(mentorId);
+            names[mentorId] = userData.name || mentorId;
+          })
+        );
+        
+        setMentorNames(names);
       } catch (err) {
         console.error(err);
         setError("Failed to fetch bookings");
@@ -50,11 +61,26 @@ export default function UserCalendar() {
     fetchBookings();
   }, [token, user]);
 
+     const fetchUserById = async (id) => {
+        try {
+          const response = await axios.get(
+            `${process.env.REACT_APP_BACKEND_URL}/users/getUserById/${id}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          return response.data;
+        } catch (error) {
+          console.error(`Error fetching user ${id}:`, error);
+          return { name: id }; // Fallback to ID if error
+        }
+      };
+
   const events = bookings.map((b) => {
     const [startTime, endTime] = b.slot.split("-");
     const day = b.day.replace(/\//g, "-");
     return {
-      title: `Mentor: ${b.mentorId}`,
+      title: `Mentor: ${mentorNames[b.mentorId] || b.mentorId} `, 
       start: `${day}T${startTime}:00`,
       end: `${day}T${endTime}:00`,
       color: "green",
