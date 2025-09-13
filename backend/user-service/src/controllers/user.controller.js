@@ -1,10 +1,21 @@
 const { saveUser } = require("../services/user.service");
-const { getUser , getMentors} = require("../services/user.service");
+const { getUser, getMentors, getUsers } = require("../services/user.service");
 
 async function createUser(req, res) {
   try {
     const { sub, email } = req.user;
-    const { role, name, domains, seniority, badges, interests, goals, experienceLevel, availabilitySlots, hourlyRate } = req.body;
+    const {
+      role,
+      name,
+      domains,
+      seniority,
+      badges,
+      interests,
+      goals,
+      experienceLevel,
+      availabilitySlots,
+      hourlyRate,
+    } = req.body;
 
     const user = {
       userId: sub,
@@ -19,7 +30,7 @@ async function createUser(req, res) {
       experienceLevel,
       availabilitySlots,
       hourlyRate,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     await saveUser(user);
@@ -52,7 +63,6 @@ async function getMentorAvailability(req, res) {
 async function getUserById(req, res) {
   try {
     const { userId } = req.params;
-    console.log(userId)
     const user = await getUser(userId);
 
     if (!user) {
@@ -82,7 +92,6 @@ async function getMentorPriceRate(req, res) {
   }
 }
 
-
 async function getCurrentUser(req, res) {
   try {
     const { sub } = req.user; // Cognito sub from verifyToken
@@ -104,7 +113,7 @@ async function getCurrentUser(req, res) {
       goals: user.goals,
       experienceLevel: user.experienceLevel,
       availabilitySlots: user.availabilitySlots,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
     });
   } catch (err) {
     console.error("Error fetching user:", err);
@@ -116,11 +125,11 @@ async function getCurrentUser(req, res) {
 async function getAllMentors(req, res) {
   try {
     const mentors = await getMentors();
-    
+
     // Format the response
-    const formattedMentors = mentors.map(mentor => ({
+    const formattedMentors = mentors.map((mentor) => ({
       id: mentor.userId,
-      name: mentor.name || 'Unknown',
+      name: mentor.name || "Unknown",
       email: mentor.email,
       title: mentor.title,
       company: mentor.company,
@@ -130,14 +139,18 @@ async function getAllMentors(req, res) {
       badges: Array.isArray(mentor.badges) ? mentor.badges : [],
       rating: mentor.rating || 0,
       profilePicture: mentor.profilePicture,
-      availabilitySlots: Array.isArray(mentor.availabilitySlots) ? mentor.availabilitySlots : [],
-      hourlyRate: mentor.hourlyRate
+      availabilitySlots: Array.isArray(mentor.availabilitySlots)
+        ? mentor.availabilitySlots
+        : [],
+      hourlyRate: mentor.hourlyRate,
     }));
-    
+
     res.json(formattedMentors);
   } catch (error) {
-    console.error('Error fetching all mentors:', error);
-    res.status(500).json({ message: 'Error fetching mentors', error: error.message });
+    console.error("Error fetching all mentors:", error);
+    res
+      .status(500)
+      .json({ message: "Error fetching mentors", error: error.message });
   }
 }
 
@@ -145,13 +158,13 @@ async function getAllMentors(req, res) {
 async function getMentorById(req, res) {
   try {
     const { mentorId } = req.params;
-    
+
     const mentor = await getUser(mentorId);
-    
-    if (!mentor || mentor.role !== 'mentor') {
-      return res.status(404).json({ message: 'Mentor not found' });
+
+    if (!mentor || mentor.role !== "mentor") {
+      return res.status(404).json({ message: "Mentor not found" });
     }
-    
+
     // Format the response
     const formattedMentor = {
       id: mentor.userId,
@@ -166,13 +179,13 @@ async function getMentorById(req, res) {
       rating: mentor.rating || 0,
       profilePicture: mentor.profilePicture,
       availabilitySlots: mentor.availabilitySlots || [],
-      hourlyRate: mentor.hourlyRate
+      hourlyRate: mentor.hourlyRate,
     };
-    
+
     res.json(formattedMentor);
   } catch (error) {
-    console.error('Error fetching mentor:', error);
-    res.status(500).json({ message: 'Error fetching mentor' });
+    console.error("Error fetching mentor:", error);
+    res.status(500).json({ message: "Error fetching mentor" });
   }
 }
 
@@ -191,20 +204,66 @@ async function updateAvailability(req, res) {
     // Update availability slots
     const updatedUser = {
       ...user,
-      availabilitySlots: availabilitySlots || []
+      availabilitySlots: availabilitySlots || [],
     };
 
     // Save updated user
     await saveUser(updatedUser);
 
-    res.json({ 
+    res.json({
       message: "Availability updated successfully",
-      availabilitySlots: updatedUser.availabilitySlots
+      availabilitySlots: updatedUser.availabilitySlots,
     });
   } catch (error) {
-    console.error('Error updating availability:', error);
-    res.status(500).json({ error: 'Failed to update availability' });
+    console.error("Error updating availability:", error);
+    res.status(500).json({ error: "Failed to update availability" });
   }
 }
 
-module.exports = { createUser, getMentorAvailability, getCurrentUser, getMentorPriceRate,getUserById, getAllMentors, getMentorById, updateAvailability};
+async function getAllUsers(req, res) {
+  try {
+    const users = await getUsers();
+
+    // Format the response - exclude current user and sensitive information
+    const currentUserId = req.user.sub;
+    const formattedUsers = users
+      .filter((user) => user.userId !== currentUserId) // Exclude current user
+      .map((user) => ({
+        id: user.userId,
+        name: user.name || "Unknown",
+        email: user.email,
+        role: user.role,
+        title: user.title,
+        company: user.company,
+        bio: user.bio,
+        domains: Array.isArray(user.domains) ? user.domains : [],
+        seniority: user.seniority,
+        badges: Array.isArray(user.badges) ? user.badges : [],
+        rating: user.rating || 0,
+        profilePicture: user.profilePicture,
+        availabilitySlots: Array.isArray(user.availabilitySlots)
+          ? user.availabilitySlots
+          : [],
+        hourlyRate: user.hourlyRate,
+      }));
+
+    res.json(formattedUsers);
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    res
+      .status(500)
+      .json({ message: "Error fetching users", error: error.message });
+  }
+}
+
+module.exports = {
+  createUser,
+  getMentorAvailability,
+  getCurrentUser,
+  getMentorPriceRate,
+  getUserById,
+  getAllMentors,
+  getMentorById,
+  updateAvailability,
+  getAllUsers,
+};

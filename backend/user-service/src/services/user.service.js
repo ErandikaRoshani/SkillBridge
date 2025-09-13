@@ -55,4 +55,18 @@ async function getMentors() {
   }
 }
 
-module.exports = { saveUser, getUser, getMentors };
+async function getUsers() {
+  try {
+    const scanParams = {
+      TableName: USERS_TABLE
+    };
+
+    const result = await docClient.send(new ScanCommand(scanParams));
+    return result.Items || [];
+  } catch (err) {
+    console.error("Error querying all users:", err);
+    throw err;
+  }
+}
+
+module.exports = { saveUser, getUser, getMentors,getUsers };

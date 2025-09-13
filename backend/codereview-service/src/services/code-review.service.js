@@ -92,8 +92,6 @@ async function getReviewsByMentor(mentorId) {
     ExpressionAttributeValues: { ":mentorId": mentorId },
   };
   const data = await dynamoDb.send(new ScanCommand(params));
-  console.log(mentorId);
-
   return data.Items;
 }
 

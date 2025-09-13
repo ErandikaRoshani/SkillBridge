@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -25,18 +25,15 @@ import {
   Menu as MenuIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import useUser from "../services/UserContext";
 
-
-const Header = ({ onSignOut, token }) => {
+const Header = ({ onSignOut }) => {
   const [anchorEl, setAnchorEl] = useState(null);
-  const [userName, setUserName] = useState(localStorage.getItem("userName") || null);
   const [role, setRole] = useState(localStorage.getItem("signupRole") || null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user, userName } = useUser();
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -133,7 +130,7 @@ const Header = ({ onSignOut, token }) => {
     <>
       <AppBar position="static" elevation={2}>
         <Toolbar>
-          {/* Logo/Brand */}
+          {/* Logo*/}
           <Typography
             variant="h6"
             component="div"

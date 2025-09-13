@@ -10,9 +10,11 @@ import { Box } from "@mui/material";
 import { useState, useEffect } from "react";
 import { getCurrentUser, fetchAuthSession, signOut as amplifySignOut } from "aws-amplify/auth";
 import MentorDiscovery from "./components/MentorDiscovery";
-import AvailabilityManager from "./components/AvailabilityManager"; // Add this import
+import AvailabilityManager from "./components/AvailabilityManager";
 import MenteeCodeReviews from "./components/MenteeCodeReviews";
 import MentorCodeReviews from "./components/MentorCodeReviews";
+import Messaging from "./components/Messaging";
+import ChatWidget from "./components/ChatWidget";
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -27,6 +29,7 @@ function App() {
         const user = await getCurrentUser();
         if (user) {
           setCurrentUser(user);
+          localStorage.setItem("userId", user.userId);
           const session = await fetchAuthSession();
           const newToken = session.tokens?.idToken?.toString();
           if (newToken) {
@@ -48,6 +51,8 @@ function App() {
     setToken(null);
     localStorage.removeItem("token");
     localStorage.removeItem("signupRole");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userId");
     navigate("/");
   };
 
@@ -66,15 +71,16 @@ function App() {
             <Route path="/" element={<AuthWrapper />} />
             <Route path="/live/:bookingId" element={<LiveSession />} />
             <Route path="/calendar" element={<Calendar />} />
+            <Route path="/messaging" element={<Messaging />} />
             <Route path="/mentee-code-reviews" element={<MenteeCodeReviews />} />
             <Route path="/mentor-code-reviews" element={<MentorCodeReviews />} />
             <Route path="/mentor-bookings" element={<MentorBookings token={token} />} />
             <Route path="/mentee-bookings" element={<MenteeBookings token={token} />} />
             <Route path="/mentors" element={<MentorDiscovery token={token} />} />
-            {/* Add the new route for availability management */}
             <Route path="/availability" element={<AvailabilityManager token={token} mentorId={currentUser?.userId} />} />
           </Routes>
         </Box>
+        <ChatWidget />
       </Box>
     </UserContextProvider>
   );

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 
@@ -6,55 +6,82 @@ export const UserContext = createContext({});
 
 export const UserContextProvider = ({ children }) => {
   const [user, setUser] = useState();
-  const [userName, setUserName] = useState();
+  const [userName, setUserName] = useState(
+    localStorage.getItem("userName") || null
+  );
   const [token, setToken] = useState(localStorage.getItem("token") || null);
   const [role, setRole] = useState(localStorage.getItem("signupRole") || null);
 
-  const decodeToken = async (token) => {
-    if (token) {
-      const decoded = jwtDecode(token);
-      const userData = decoded.sub;
-      console.log("UserID: ", decoded.sub);
-      setUser(userData);
+  const decodeToken = async (tokenToDecode = token) => {
+    if (tokenToDecode) {
       try {
-    const response = await axios.get(
-      `${process.env.REACT_APP_BACKEND_URL}/users/getUserById/${decoded.sub}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    const userData = response.data;
-      const name = userData.name || userData.username ;
-      
-      setUserName(name);
-      localStorage.setItem("userName", name);
-    return response.data; // let the caller setUserName
-  } catch (error) {
-    console.error(`Error fetching user ${decoded.sub}:`, error);
-    return { name: decoded.sub }; // fallback
-  }
-    } else {
-      const tokenLocal = localStorage.getItem("token");
-      if (tokenLocal) {
-        console.log("UserID: from local ");
-        decodeToken(tokenLocal);
+        const decoded = jwtDecode(tokenToDecode);
+        const userId = decoded.sub;
+        setUser(userId);
+
+        const response = await axios.get(
+          `${process.env.REACT_APP_BACKEND_URL}/users/getUserById/${userId}`,
+          {
+            headers: { Authorization: `Bearer ${tokenToDecode}` },
+          }
+        );
+
+        const userData = response.data;
+        const name = userData.name || userData.username;
+
+        setUserName(name);
+        localStorage.setItem("userName", name);
+        return userData;
+      } catch (error) {
+        console.error("Error decoding token or fetching user:", error);
+        try {
+          const decoded = jwtDecode(tokenToDecode);
+          const name = decoded.name || decoded.username || decoded.sub;
+          setUserName(name);
+          localStorage.setItem("userName", name);
+          return { name };
+        } catch (decodeError) {
+          console.error("Error decoding token:", decodeError);
+          return null;
+        }
       }
     }
+    return null;
   };
 
+  // Update user data when token changes
+  useEffect(() => {
+    if (token) {
+      decodeToken(token);
+    } else {
+      // Clear user data when token is removed
+      setUser(null);
+      setUserName(null);
+      localStorage.removeItem("userName");
+    }
+  }, [token]);
 
+  // Initial load - check for existing token
   useEffect(() => {
     const tokenLocal = localStorage.getItem("token");
     const roleLocal = localStorage.getItem("signupRole");
+    const userNameLocal = localStorage.getItem("userName");
 
     if (roleLocal) setRole(roleLocal);
-    decodeToken();
+    if (userNameLocal) setUserName(userNameLocal);
+
+    if (tokenLocal && !token) {
+      setToken(tokenLocal);
+      decodeToken(tokenLocal);
+    }
   }, []);
 
   // Keep localStorage in sync when role changes
   useEffect(() => {
     if (role) {
       localStorage.setItem("signupRole", role);
+    } else {
+      localStorage.removeItem("signupRole");
     }
   }, [role]);
 
@@ -62,21 +89,36 @@ export const UserContextProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       localStorage.setItem("token", token);
+    } else {
+      localStorage.removeItem("token");
     }
   }, [token]);
 
   return (
     <UserContext.Provider
-      value={{ user, setUser, decodeToken, token, setToken, role, setRole }}
+      value={{
+        user,
+        setUser,
+        userName,
+        setUserName,
+        decodeToken,
+        token,
+        setToken,
+        role,
+        setRole,
+      }}
     >
       {children}
     </UserContext.Provider>
   );
 };
+
 const useUser = () => {
   const context = useContext(UserContext);
-  if (context) {
-    return context;
+  if (!context) {
+    throw new Error("useUser must be used within a UserContextProvider");
   }
+  return context;
 };
+
 export default useUser;

@@ -1,7 +1,7 @@
 const express = require("express");
 const verifyToken = require("../../middleware/auth");
 const { createUser } = require("../controllers/user.controller");
-const { getMentorAvailability, getCurrentUser, getMentorPriceRate, getUserById, getAllMentors, getMentorById, updateAvailability } = require("../controllers/user.controller");
+const { getMentorAvailability, getCurrentUser, getMentorPriceRate, getUserById, getAllMentors, getMentorById, updateAvailability, getAllUsers } = require("../controllers/user.controller");
 
 const router = express.Router();
 
@@ -14,5 +14,6 @@ router.get("/getUserById/:userId", verifyToken, getUserById);
 router.get("/mentors/all", verifyToken, getAllMentors);
 router.get("/mentor/profile/:mentorId", verifyToken, getMentorById);
 router.put("/update-availability", verifyToken, updateAvailability);
+router.get("/all/users", verifyToken, getAllUsers);
 
 module.exports = router;

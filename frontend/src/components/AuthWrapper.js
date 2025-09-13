@@ -7,6 +7,7 @@ import axios from "axios";
 import SignUpFormFields from "./SignUpFormFields";
 import { Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import useUser from "../services/UserContext";
 
 const components = {
   SignUp: {
@@ -19,6 +20,7 @@ export default function AuthWrapper() {
   const [hasProcessedUser, setHasProcessedUser] = useState(false);
   const [role, setRole] = useState(localStorage.getItem("signupRole") || null);
   const navigate = useNavigate();
+  const { setToken, userName } = useUser();
 
   // check auth state on mount
   useEffect(() => {
@@ -119,7 +121,8 @@ export default function AuthWrapper() {
       const token = session.tokens?.idToken?.toString();
       if (!token) return;
       localStorage.setItem("token", token);
-
+      console.log('User logged in:', userName);
+      setToken(token);
       let finalRole = role;
       if (!finalRole) {
         const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/users/me`, {
